@@ -1,24 +1,18 @@
-import React, { useState } from 'react';
-import Header from './header.jsx';
-import SummarySection from './summarySection.jsx';  
-import UtilizationSection from './UtilizationSection.jsx';
-import FinalSummarySection from './FinalSummarySection.jsx';
-import { COST_CENTERS } from './data/costCenters';
+import React, { useState, useEffect } from 'react';
+import AuthPage from './AuthPage.jsx';
+import Dashboard from './Dashboard.jsx';
 
-function createRow(refNum = '1', isFirstRow = false) {
-  return {
-    id: crypto.randomUUID(),
-    date: '',
-    refNum,
-    costCenterCode: '',
-    costCenterDesc: '',
-    description: '',
-    amount: '0.00',
-    isFirstRow
-  };
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function App() {
+  const [token, setToken] = useState(sessionStorage.getItem('token'));
+  const [checking, setChecking] = useState(Boolean(sessionStorage.getItem('token')));
+
+  // On page load, confirm the saved token is still valid with the server
+  useEffect(() => {
+    if (!token) {
+      setChecking(false);
+      return;
   const [selectedReport, setSelectedReport] = useState('report1');
 
   // Summary State
@@ -74,77 +68,33 @@ function App() {
       setTable1Rows(syncedT1);
       setTable2Rows(syncedT2);
     }
+
+    fetch(`${API_URL}/api/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (!res.ok) throw new Error('invalid token');
+      })
+      .catch(() => handleLogout())
+      .finally(() => setChecking(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleLogin = (newToken) => {
+    sessionStorage.setItem('token', newToken);
+    setToken(newToken);
   };
 
-  const handleUpdateRow = (tableIndex, id, field, value) => {
-    const updateList = (list) =>
-      list.map((row) => {
-        if (row.id !== id) return row;
-        const updated = { ...row, [field]: value };
-        if (field === 'costCenterCode') {
-          const code = value.trim();
-          updated.costCenterDesc = COST_CENTERS[code] || (code ? 'Unknown Code' : '');
-        }
-        return updated;
-      });
-
-    const updatedT1 = tableIndex === 1 ? updateList(table1Rows) : table1Rows;
-    const updatedT2 = tableIndex === 2 ? updateList(table2Rows) : table2Rows;
-
-    const { syncedT1, syncedT2 } = syncRefNumbers(updatedT1, updatedT2);
-    setTable1Rows(syncedT1);
-    setTable2Rows(syncedT2);
+  const handleLogout = () => {
+    sessionStorage.removeItem('token');
+    setToken(null);
   };
 
-  const handleDeleteRow = (tableIndex, id) => {
-    const updatedT1 = tableIndex === 1 ? table1Rows.filter((r) => r.id !== id) : table1Rows;
-    const updatedT2 = tableIndex === 2 ? table2Rows.filter((r) => r.id !== id) : table2Rows;
+  if (checking) return null;
 
-    const { syncedT1, syncedT2 } = syncRefNumbers(updatedT1, updatedT2);
-    setTable1Rows(syncedT1);
-    setTable2Rows(syncedT2);
-  };
+  if (!token) {
+    return <AuthPage onLogin={handleLogin} />;
+  }
 
-  const handleSave = () => {
-    alert("FLR Report saved successfully!");
-  };
-
-  // Calculations derived directly during rendering
-  const availableFund = (parseFloat(summary.fundBalance) || 0) + (parseFloat(summary.replenishment) || 0);
-  const subtotal1 = table1Rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-  const subtotal2 = table2Rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-  const totalUtilized = subtotal1 + subtotal2;
-  const endingBalance = availableFund - totalUtilized;
-
-  return (
-    <div className="container">
-      <Header 
-        selectedReport={selectedReport} 
-        onReportChange={setSelectedReport} 
-      />
-      <SummarySection
-        assignedFund={summary.assignedFund}
-        fundBalance={summary.fundBalance}
-        replenishment={summary.replenishment}
-        availableFund={availableFund}
-        onSummaryChange={handleSummaryChange}
-      />
-      <UtilizationSection
-        table1Rows={table1Rows}
-        table2Rows={table2Rows}
-        availableFund={availableFund}
-        onAddRow={handleAddRow}
-        onUpdateRow={handleUpdateRow}
-        onDeleteRow={handleDeleteRow}
-      />
-      <FinalSummarySection
-        availableFund={availableFund}
-        totalUtilized={totalUtilized}
-        endingBalance={endingBalance}
-        onSave={handleSave}
-      />
-    </div>
-  );
+  return <Dashboard onLogout={handleLogout} />;
 }
 
 export default App;

@@ -32,6 +32,17 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+.login-page {
+  background-image:
+  linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)),
+  url(assets/sedahotel.jpg);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -145,6 +156,24 @@ th {
 }
 
 tr:last-child td {
+  border-bottom: none;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 0.88rem;
+  outline: none;
+  transition: all 0.3s ease;
     border-bottom: none;
 }
 
@@ -387,4 +416,65 @@ input.input-error {
   font-size: 0.825rem;
   font-weight: 500;
   margin-top: 2px;
+}
+
+/* Login Page Styles */
+.wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.wrapper-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh;
+}
+
+.login-header {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  color: var(--seda-dark-brown);
+}
+
+.wrapper form {
+  display: flex;
+  flex-direction: column;
+}
+
+.wrapper .username-input {
+  width: 570px;
+  padding: 12px 14px;
+  font-size: 18px;
+  box-sizing: border-box;
+}
+
+.wrapper .password-input {
+  width: 570px;
+  padding: 12px 14px;
+  font-size: 18px;
+  box-sizing: border-box;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.auth-switch a {
+  color: var(--seda-dark-brown);
+  font-weight: 600;
 }
