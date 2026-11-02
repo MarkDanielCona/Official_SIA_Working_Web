@@ -25,27 +25,23 @@ function UtilizationSection({
   // Validates disbursement amounts according to script_2 rules
   const handleAmountBlur = (tableIndex, id, value) => {
     let numeric = parseFloat(value) || 0;
-
-    setWarning1("");
-    setWarning2("");
-    setWarningb("");
-
+    
     if (tableIndex === 1 && numeric > 3000) {
-      setWarning1("Amount cannot exceed PHP 3,000 for this section.");
+      alert("Amount cannot exceed PHP 3,000 for this section.");
       numeric = 3000;
     }
     if (tableIndex === 2 && numeric < 3000) {
-      setWarning2(
+      alert(
         "Table 2 is restricted to disbursements of PHP 3,000 or more.",
       );
       numeric = 3000;
     }
     if (numeric < 0) {
-      setWarningb("Amount cannot be negative.");
+      alert("Amount cannot be negative.");
       numeric = 0;
     }
     if (numeric > availableFund) {
-      setWarningb("Amount exceeds available fund.");
+      alert("Amount exceeds available fund.");
       numeric = 0;
     }
 

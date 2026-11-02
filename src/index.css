@@ -410,6 +410,7 @@ input.input-error {
   margin-top: 2px;
 }
 
+/* Login Page Styles */
 .wrapper {
   max-width: 600px;
   margin: 0 auto;
@@ -451,4 +452,21 @@ input.input-error {
   padding: 12px 14px;
   font-size: 18px;
   box-sizing: border-box;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.auth-switch a {
+  color: var(--seda-dark-brown);
+  font-weight: 600;
 }

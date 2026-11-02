@@ -1,6 +1,9 @@
 import React from 'react';
 
-function FinalSummarySection({ availableFund, totalUtilized, endingBalance, onSave }) {
+function FinalSummarySection({ assignedFund, availableFund, totalUtilized, endingBalance, onSave }) {
+  const exceedsAssigned = endingBalance > assignedFund;
+  const excessAmount = endingBalance - assignedFund;
+
   return (
     <div className="section final-summary-section">
       <h2>Balance Calculation</h2>
@@ -36,11 +39,24 @@ function FinalSummarySection({ availableFund, totalUtilized, endingBalance, onSa
             id="endingFundBalance"
             value={`Php ${endingBalance.toFixed(2)}`}
             readOnly
+            className={exceedsAssigned ? 'input-error' : ''}
+            aria-invalid={exceedsAssigned}
           />
+          {exceedsAssigned && (
+            <p className="balance-alert" role="alert">
+              Ending Fund Balance exceeds the Assigned Fund of PHP {assignedFund.toFixed(2)}. Please adjust your entries.
+            </p>
+          )}
         </div>
       </div>
-      
-      <button type="button" className="save-button" onClick={onSave}>
+
+      <button
+        type="button"
+        className="save-button"
+        onClick={onSave}
+        disabled={exceedsAssigned}
+        title={exceedsAssigned ? 'Ending balance cannot exceed the assigned fund' : ''}
+      >
         Save FLR
       </button>
     </div>
