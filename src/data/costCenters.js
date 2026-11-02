@@ -12,5 +12,16 @@ export const COST_CENTERS = {
   "211": "Food and Beverage - STRAIGHT UP",
   "301": "Other Operated Department - Laundry",
   "302": "Other Operated Department - Transportation",
-  "303": "Other Operated Department - Business Center"
+  "303": "Other Operated Department - Business Center",
+  "304": "Other Operated Department - Shop",
+  "305": "Other Operated Department - Telecommunications",
+  "401": "Administrative and General - Executive Office",
+  "402": "Administrative and General - Finance",
+  "403": "Administrative and General - Human Resource",
+  "404": "Administrative and General - Security",
+  "501": "Sales and Marketing - Sales",
+  "502": "Sales and Marketing - Communications",
+  "600": "Property Operation Maintenance and Energy Costs",
+  "700": "Staff Canteen (For Allocation)",
+  "AR1": "Receivable from Corporate Office",
 };
