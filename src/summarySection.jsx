@@ -9,9 +9,9 @@ function SummarySection({ assignedFund, fundBalance, replenishment, availableFun
         <input 
           type="number" 
           id="assignedFund" 
-          value={assignedFund}
+          value={assignedFund} 
           step="0.01" 
-          readOnly
+          onChange={(e) => onSummaryChange('assignedFund', e.target.value)}
         />
       </div>
       <div className="form-group">
