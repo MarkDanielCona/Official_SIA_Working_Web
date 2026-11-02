@@ -144,4 +144,8 @@ app.get('/api/me', requireAuth, (req, res) => {
   res.json({ id: req.user.sub, username: req.user.username });
 });
 
-app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+module.exports = app;
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+}
