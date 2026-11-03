@@ -19,9 +19,13 @@
     --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* {
+/* FIX: this rule was commented out, so inputs with width: 100% plus padding were wider than
+   their containers (that is what pushed the green box past the card edge). */
+*,
+*::before,
+*::after {
     box-sizing: border-box;
-} */
+}
 
 body {
     font-family: var(--font-family);
@@ -276,6 +280,16 @@ button:active {
     margin-top: 20px;
 }
 
+/* NEW: Save FLR looks disabled (and stops reacting to hover) when the balance is over the limit */
+.save-button:disabled,
+.save-button:disabled:hover {
+    background-color: var(--seda-dark-brown);
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 .delete-btn {
     background-color: transparent;
     color: #a33c3c;
@@ -297,20 +311,20 @@ button:active {
     border: 1px solid var(--border-color);
 }
 
+/* FIX: three equal boxes with the - and = signs in the gaps between them.
+   minmax(0, 1fr) stops the boxes from growing past the card. */
 .calculation-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 15px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: end;
     margin-top: 15px;
 }
 
 .calc-box {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-width: 220px;
+    min-width: 0;
 }
 
 .calc-box label {
@@ -324,6 +338,7 @@ button:active {
 
 .calc-box input {
     width: 100%;
+    height: 48px;
     padding: 12px 14px;
     font-size: 1.05rem;
     font-weight: 700;
@@ -333,18 +348,54 @@ button:active {
     color: var(--text-primary);
 }
 
+/* FIX: same height as the inputs, so the signs line up with the middle of the boxes */
 .calc-operator {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--seda-light-tan);
     filter: brightness(0.7);
-    padding-top: 22px;
 }
 
 .ending-balance-box input {
     background-color: var(--ending-bg);
     color: var(--ending-text);
     border-color: #b8d6bf;
+}
+
+/* NEW: ending balance turns red when it is over the assigned fund */
+.ending-balance-box input.input-error {
+    background-color: #fdf0f0;
+    color: #a33c3c;
+    border: 1.5px solid #d9534f;
+}
+
+/* NEW: the alert message under the three boxes */
+.balance-alert {
+    margin: 16px 0 0;
+    padding: 10px 14px;
+    background-color: #fdf0f0;
+    border: 1px solid #eccaca;
+    border-left: 4px solid #d9534f;
+    border-radius: 8px;
+    color: #a33c3c;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+/* On narrow screens, stack the boxes */
+@media (max-width: 800px) {
+    .calculation-row {
+        grid-template-columns: 1fr;
+        row-gap: 8px;
+    }
+
+    .calc-operator {
+        height: auto;
+    }
 }
 
 .flr-select-group {

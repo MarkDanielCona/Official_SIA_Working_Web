@@ -342,6 +342,7 @@ function Dashboard({ token, onLogout }) {
         onDeleteRow={handleDeleteRow}
       />
       <FinalSummarySection
+        assignedFund={parseFloat(summary.assignedFund) || 0}
         availableFund={availableFund}
         totalUtilized={totalUtilized}
         endingBalance={endingBalance}
