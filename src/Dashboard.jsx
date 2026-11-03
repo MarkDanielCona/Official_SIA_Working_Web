@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Header from './header.jsx';
 import SummarySection from './summarySection.jsx';
 import UtilizationSection from './UtilizationSection.jsx';
 import FinalSummarySection from './FinalSummarySection.jsx';
 import { COST_CENTERS } from './data/costCenters';
+import { buildReportCSV, downloadCSV, parseReportCSV } from './utils/csv.js';
 
 function createRow(refNum = '1', isFirstRow = false) {
   return {
@@ -31,6 +32,9 @@ function Dashboard({ onLogout }) {
   // Table Row State (Initialized with 1 row in each table)
   const [table1Rows, setTable1Rows] = useState([createRow('1', true)]);
   const [table2Rows, setTable2Rows] = useState([createRow('2', false)]);
+
+  // === CSV: hidden file picker reference ===
+  const fileInputRef = useRef(null);
 
   // Re-indexes reference numbers sequentially across both tables
   const syncRefNumbers = (t1, t2) => {
@@ -116,11 +120,72 @@ function Dashboard({ onLogout }) {
   const totalUtilized = subtotal1 + subtotal2;
   const endingBalance = availableFund - totalUtilized;
 
+  // === CSV: export ===
+  const handleExport = () => {
+    const csv = buildReportCSV({
+      summary,
+      table1Rows,
+      table2Rows,
+      totals: { availableFund, subtotal1, subtotal2, totalUtilized, endingBalance }
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCSV(csv, `FLR-Report_${selectedReport}_${today}.csv`);
+  };
+
+  // === CSV: import ===
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // lets the same file be chosen again later
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = parseReportCSV(text, COST_CENTERS);
+
+      if (!window.confirm('Importing will replace the current report data. Continue?')) return;
+
+      const toRows = (list) =>
+        list.map((r) => ({
+          ...createRow(r.refNum || '1'),
+          date: r.date,
+          costCenterCode: r.costCenterCode,
+          costCenterDesc: r.costCenterDesc,
+          description: r.description,
+          amount: r.amount
+        }));
+
+      let t1 = toRows(data.table1);
+      let t2 = toRows(data.table2);
+      if (t1.length === 0) t1 = [createRow('1', true)]; // keep at least one row per table
+      if (t2.length === 0) t2 = [createRow('2', false)];
+
+      const { syncedT1, syncedT2 } = syncRefNumbers(t1, t2);
+      setSummary((prev) => ({ ...prev, ...data.summary }));
+      setTable1Rows(syncedT1);
+      setTable2Rows(syncedT2);
+    } catch (err) {
+      alert(err.message || 'Could not import this file.');
+    }
+  };
+
   return (
     <div className="container">
-      <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+      {/* === CSV: buttons (Log out button moved into the same row) === */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '8px' }}>
+        <button onClick={handleImportClick}>Import CSV</button>
+        <button onClick={handleExport}>Export CSV</button>
         <button onClick={onLogout}>Log out</button>
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        onChange={handleImportFile}
+        style={{ display: 'none' }}
+      />
+
       <Header
         selectedReport={selectedReport}
         onReportChange={setSelectedReport}
@@ -141,7 +206,6 @@ function Dashboard({ onLogout }) {
         onDeleteRow={handleDeleteRow}
       />
       <FinalSummarySection
-        assignedFund={parseFloat(summary.assignedFund) || 0}
         availableFund={availableFund}
         totalUtilized={totalUtilized}
         endingBalance={endingBalance}
