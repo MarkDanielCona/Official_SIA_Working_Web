@@ -9,16 +9,6 @@ function App() {
   const [token, setToken] = useState(sessionStorage.getItem('token'));
   const [checking, setChecking] = useState(Boolean(sessionStorage.getItem('token')));
 
-  const handleLogin = (newToken) => {
-    sessionStorage.setItem('token', newToken);
-    setToken(newToken);
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('token');
-    setToken(null);
-  };
-
   // On page load, confirm the saved token is still valid with the server
   useEffect(() => {
     if (!token) {
@@ -35,13 +25,24 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleLogin = (newToken) => {
+    sessionStorage.setItem('token', newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('token');
+    setToken(null);
+  };
+
   if (checking) return null;
 
   if (!token) {
     return <AuthPage onLogin={handleLogin} />;
   }
 
-  return <Dashboard onLogout={handleLogout} />;
+  // The Dashboard needs the token to save and load reports
+  return <Dashboard token={token} onLogout={handleLogout} />;
 }
 
 export default App;

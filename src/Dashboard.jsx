@@ -1,10 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Header from './header.jsx';
 import SummarySection from './summarySection.jsx';
 import UtilizationSection from './UtilizationSection.jsx';
 import FinalSummarySection from './FinalSummarySection.jsx';
 import { COST_CENTERS } from './data/costCenters';
 import { buildReportCSV, downloadCSV, parseReportCSV } from './utils/csv.js';
+// === SAVE: new import ===
+import { api } from './api.js';
+
+const DEFAULT_SUMMARY = {
+  assignedFund: '50000.00',
+  fundBalance: '0.00',
+  replenishment: '0.00'
+};
 
 function createRow(refNum = '1', isFirstRow = false) {
   return {
@@ -19,19 +27,33 @@ function createRow(refNum = '1', isFirstRow = false) {
   };
 }
 
-function Dashboard({ onLogout }) {
+// Only the fields the server needs (no ids or display-only values)
+const forServer = (rows) =>
+  rows.map((r) => ({
+    date: r.date,
+    refNum: r.refNum,
+    costCenterCode: r.costCenterCode,
+    description: r.description,
+    amount: r.amount
+  }));
+
+// === SAVE: token is new ===
+function Dashboard({ token, onLogout }) {
   const [selectedReport, setSelectedReport] = useState('report1');
 
   // Summary State
-  const [summary, setSummary] = useState({
-    assignedFund: '50000.00',
-    fundBalance: '0.00',
-    replenishment: '0.00'
-  });
+  const [summary, setSummary] = useState(DEFAULT_SUMMARY);
 
   // Table Row State (Initialized with 1 row in each table)
   const [table1Rows, setTable1Rows] = useState([createRow('1', true)]);
   const [table2Rows, setTable2Rows] = useState([createRow('2', false)]);
+
+  // === SAVE: new state ===
+  // Cost centers start from the built-in list and are replaced by the database list when it loads
+  const [costCenters, setCostCenters] = useState(COST_CENTERS);
+  const [dirty, setDirty] = useState(false); // unsaved changes
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // === CSV: hidden file picker reference ===
   const fileInputRef = useRef(null);
@@ -60,8 +82,113 @@ function Dashboard({ onLogout }) {
     return { syncedT1, syncedT2 };
   };
 
+  // === SAVE: shared by loading from the database and by CSV import ===
+  // Replaces the whole report on screen with the given data.
+  const applyData = ({ summary: newSummary, table1, table2 }) => {
+    const toRows = (list) =>
+      list.map((r) => {
+        const code = (r.costCenterCode || '').trim();
+        return {
+          ...createRow(r.refNum || '1'),
+          date: r.date || '',
+          costCenterCode: code,
+          costCenterDesc: costCenters[code] || (code ? 'Unknown Code' : ''),
+          description: r.description || '',
+          amount: r.amount ?? '0.00'
+        };
+      });
+
+    let t1 = toRows(table1);
+    let t2 = toRows(table2);
+    if (t1.length === 0) t1 = [createRow('1', true)]; // keep at least one row per table
+    if (t2.length === 0) t2 = [createRow('2', false)];
+
+    const { syncedT1, syncedT2 } = syncRefNumbers(t1, t2);
+    setSummary({ ...DEFAULT_SUMMARY, ...newSummary });
+    setTable1Rows(syncedT1);
+    setTable2Rows(syncedT2);
+  };
+
+  // === SAVE: error handling shared by all API calls ===
+  const handleApiError = (err) => {
+    if (err.status === 401) {
+      alert('Your session has expired. Please log in again.');
+      onLogout();
+      return;
+    }
+    alert(err.message || 'Something went wrong.');
+  };
+
+  // === SAVE: load a saved report from the database ===
+  const loadReport = async (key) => {
+    setLoading(true);
+    try {
+      const { report } = await api(`/api/reports/${encodeURIComponent(key)}`, { token });
+      if (report) {
+        applyData(report);
+      } else {
+        // Nothing saved under this report yet: start with a blank one
+        applyData({ summary: DEFAULT_SUMMARY, table1: [], table2: [] });
+      }
+      setDirty(false);
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // === SAVE: when the page opens, load cost centers and the saved report ===
+  useEffect(() => {
+    loadReport(selectedReport);
+
+    api('/api/cost-centers', { token })
+      .then(({ costCenters: list }) => {
+        if (list && list.length > 0) {
+          setCostCenters(Object.fromEntries(list.map((c) => [c.code, c.description])));
+        }
+      })
+      .catch(() => {
+        // Keep the built-in list if the database list can't be loaded
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the cost center list changes, refresh the descriptions already on screen
+  useEffect(() => {
+    const remap = (rows) =>
+      rows.map((r) => {
+        const code = r.costCenterCode.trim();
+        return { ...r, costCenterDesc: costCenters[code] || (code ? 'Unknown Code' : '') };
+      });
+    setTable1Rows(remap);
+    setTable2Rows(remap);
+  }, [costCenters]);
+
+  // Warn before closing the tab with unsaved changes
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  // === SAVE: switching the report dropdown loads that report ===
+  const handleReportChange = (key) => {
+    if (key === selectedReport) return;
+    if (dirty && !window.confirm('You have unsaved changes. Switching reports will discard them. Continue?')) {
+      return;
+    }
+    setSelectedReport(key);
+    loadReport(key);
+  };
+
   const handleSummaryChange = (field, value) => {
     setSummary((prev) => ({ ...prev, [field]: value }));
+    setDirty(true);
   };
 
   const handleAddRow = (tableIndex) => {
@@ -78,6 +205,7 @@ function Dashboard({ onLogout }) {
       setTable1Rows(syncedT1);
       setTable2Rows(syncedT2);
     }
+    setDirty(true);
   };
 
   const handleUpdateRow = (tableIndex, id, field, value) => {
@@ -87,7 +215,7 @@ function Dashboard({ onLogout }) {
         const updated = { ...row, [field]: value };
         if (field === 'costCenterCode') {
           const code = value.trim();
-          updated.costCenterDesc = COST_CENTERS[code] || (code ? 'Unknown Code' : '');
+          updated.costCenterDesc = costCenters[code] || (code ? 'Unknown Code' : '');
         }
         return updated;
       });
@@ -98,6 +226,7 @@ function Dashboard({ onLogout }) {
     const { syncedT1, syncedT2 } = syncRefNumbers(updatedT1, updatedT2);
     setTable1Rows(syncedT1);
     setTable2Rows(syncedT2);
+    setDirty(true);
   };
 
   const handleDeleteRow = (tableIndex, id) => {
@@ -107,10 +236,30 @@ function Dashboard({ onLogout }) {
     const { syncedT1, syncedT2 } = syncRefNumbers(updatedT1, updatedT2);
     setTable1Rows(syncedT1);
     setTable2Rows(syncedT2);
+    setDirty(true);
   };
 
-  const handleSave = () => {
-    alert("FLR Report saved successfully!");
+  // === SAVE: the Save button now stores the report in Supabase ===
+  const handleSave = async () => {
+    if (saving || loading) return;
+    setSaving(true);
+    try {
+      await api(`/api/reports/${encodeURIComponent(selectedReport)}`, {
+        method: 'PUT',
+        token,
+        body: {
+          summary,
+          table1: forServer(table1Rows),
+          table2: forServer(table2Rows)
+        }
+      });
+      setDirty(false);
+      alert('FLR Report saved successfully!');
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Calculations derived directly during rendering
@@ -142,29 +291,12 @@ function Dashboard({ onLogout }) {
 
     try {
       const text = await file.text();
-      const data = parseReportCSV(text, COST_CENTERS);
+      const data = parseReportCSV(text, costCenters);
 
       if (!window.confirm('Importing will replace the current report data. Continue?')) return;
 
-      const toRows = (list) =>
-        list.map((r) => ({
-          ...createRow(r.refNum || '1'),
-          date: r.date,
-          costCenterCode: r.costCenterCode,
-          costCenterDesc: r.costCenterDesc,
-          description: r.description,
-          amount: r.amount
-        }));
-
-      let t1 = toRows(data.table1);
-      let t2 = toRows(data.table2);
-      if (t1.length === 0) t1 = [createRow('1', true)]; // keep at least one row per table
-      if (t2.length === 0) t2 = [createRow('2', false)];
-
-      const { syncedT1, syncedT2 } = syncRefNumbers(t1, t2);
-      setSummary((prev) => ({ ...prev, ...data.summary }));
-      setTable1Rows(syncedT1);
-      setTable2Rows(syncedT2);
+      applyData(data);
+      setDirty(true); // imported data still has to be saved
     } catch (err) {
       alert(err.message || 'Could not import this file.');
     }
@@ -172,7 +304,6 @@ function Dashboard({ onLogout }) {
 
   return (
     <div className="container">
-      {/* === CSV: buttons (Log out button moved into the same row) === */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '8px' }}>
         <button onClick={handleImportClick}>Import CSV</button>
         <button onClick={handleExport}>Export CSV</button>
@@ -186,9 +317,14 @@ function Dashboard({ onLogout }) {
         style={{ display: 'none' }}
       />
 
+      {/* === SAVE: status messages === */}
+      {loading && <p>Loading saved report...</p>}
+      {saving && <p>Saving...</p>}
+      {dirty && !saving && !loading && <p>You have unsaved changes.</p>}
+
       <Header
         selectedReport={selectedReport}
-        onReportChange={setSelectedReport}
+        onReportChange={handleReportChange}
       />
       <SummarySection
         assignedFund={summary.assignedFund}
