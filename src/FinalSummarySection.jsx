@@ -1,8 +1,11 @@
 import React from 'react';
 
 function FinalSummarySection({ assignedFund, availableFund, totalUtilized, endingBalance, onSave }) {
-  const exceedsAssigned = endingBalance > assignedFund;
-  const excessAmount = endingBalance - assignedFund;
+  // Only check when the assigned fund was actually passed in, and compare in cents
+  // so tiny decimal differences don't trigger the alert.
+  const hasAssigned = Number.isFinite(assignedFund);
+  const exceedsAssigned =
+    hasAssigned && Math.round(endingBalance * 100) > Math.round(assignedFund * 100);
 
   return (
     <div className="section final-summary-section">
@@ -42,13 +45,15 @@ function FinalSummarySection({ assignedFund, availableFund, totalUtilized, endin
             className={exceedsAssigned ? 'input-error' : ''}
             aria-invalid={exceedsAssigned}
           />
-          {exceedsAssigned && (
-            <p className="balance-alert" role="alert">
-              Ending Fund Balance exceeds the Assigned Fund of PHP {assignedFund.toFixed(2)}. Please adjust your entries.
-            </p>
-          )}
         </div>
       </div>
+
+      {/* The alert sits below the row, so the three boxes always stay the same height */}
+      {exceedsAssigned && (
+        <p className="balance-alert" role="alert">
+          Ending Fund Balance exceeds the Assigned Fund of PHP {assignedFund.toFixed(2)}. Please adjust your entries.
+        </p>
+      )}
 
       <button
         type="button"
