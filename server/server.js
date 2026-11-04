@@ -305,14 +305,24 @@ app.put('/api/reports/:key', requireAuth, async (req, res) => {
           assigned_fund: assigned,
           fund_balance_previous_liquidation: balance,
           replenishment_of_previous_liquidation: replenishment,
-          available_fund: available,
-          fund_balance: ending,
+          // available_fund is a generated column: the database calculates it, so it is not written
         },
         { onConflict: 'user_id,report_key' }
       )
       .select('id')
       .single();
     if (flrError) throw flrError;
+
+    // Store the ending balance if the column is writable. If the database generates it
+    // instead (error 428C9), that is fine: skip it. Any other problem is logged but does
+    // not stop the save.
+    const { error: balanceError } = await supabase
+      .from('FLR-AssignedFund')
+      .update({ fund_balance: ending })
+      .eq('id', flr.id);
+    if (balanceError && balanceError.code !== '428C9') {
+      console.error('Could not store fund_balance:', balanceError);
+    }
 
     // 2) Note the rows saved before
     const { data: oldRows, error: oldError } = await supabase
